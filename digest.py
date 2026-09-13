@@ -8,9 +8,9 @@ TG_TOKEN = os.environ.get("TG_TOKEN")
 TG_CHAT_ID = os.environ.get("TG_CHAT_ID")
 LLM_KEY = os.environ.get("LLM_API_KEY")
 
-# НАСТРОЙКИ GEMINI (Бесплатно, стабильно, отличный русский язык)
+# НАСТРОЙКИ GEMINI (Стабильная версия v1)
 LLM_MODEL = "gemini-1.5-flash"
-LLM_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{LLM_MODEL}:generateContent?key={LLM_KEY}"
+LLM_URL = f"https://generativelanguage.googleapis.com/v1/models/{LLM_MODEL}:generateContent?key={LLM_KEY}"
 
 FEEDS = [
     "https://habr.com/ru/flows/security/rss/",
