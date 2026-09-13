@@ -9,7 +9,7 @@ TG_CHAT_ID = os.environ.get("TG_CHAT_ID")
 LLM_KEY = os.environ.get("LLM_API_KEY")
 
 # Бесплатная модель на OpenRouter (Qwen 2.5 72B отлично работает с русским)
-LLM_MODEL = "qwen/qwen-2.5-72b-instruct:free" 
+LLM_MODEL = "qwen/qwen-2.5-coder-32b-instruct:free"
 # Альтернатива на Groq (если OpenRouter тормозит): модель "llama3-70b-8192", URL "https://api.groq.com/openai/v1/chat/completions"
 
 FEEDS = [
