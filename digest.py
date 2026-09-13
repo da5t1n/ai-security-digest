@@ -8,19 +8,18 @@ TG_TOKEN = os.environ.get("TG_TOKEN")
 TG_CHAT_ID = os.environ.get("TG_CHAT_ID")
 LLM_KEY = os.environ.get("LLM_API_KEY")
 
-# Бесплатная модель на OpenRouter (Qwen 2.5 72B отлично работает с русским)
-LLM_MODEL = "meta-llama/llama-3.1-8b-instruct:free"
-# Альтернатива на Groq (если OpenRouter тормозит): модель "llama3-70b-8192", URL "https://api.groq.com/openai/v1/chat/completions"
+# НАСТРОЙКИ GEMINI (Бесплатно, стабильно, отличный русский язык)
+LLM_MODEL = "gemini-1.5-flash"
+LLM_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{LLM_MODEL}:generateContent?key={LLM_KEY}"
 
 FEEDS = [
     "https://habr.com/ru/flows/security/rss/",
     "https://www.tadviser.ru/rss/",
     "https://www.anti-malware.ru/rss",
     "https://thehackernews.com/feeds/posts/default",
-    "https://feeds.feedburner.com/TechCrunch/ArtificialIntelligence"
 ]
 
-KEYWORDS = ["иИ", "ai ", "llm", "нейросет", "machine learning", "prompt", "агентн", "gpt", "llama"]
+KEYWORDS = ["иИ", "ai ", "llm", "нейросет", "machine learning", "prompt", "агентн", "gpt", "llama", "кибербезопасность"]
 
 def get_news():
     yesterday = (datetime.datetime.now() - datetime.timedelta(days=1)).date()
@@ -28,45 +27,51 @@ def get_news():
     for url in FEEDS:
         try:
             feed = feedparser.parse(url)
-            for entry in feed.entries[:15]: # Берем последние 15 записей из каждого
+            for entry in feed.entries[:15]:
                 title = entry.get("title", "")
                 link = entry.get("link", "")
                 summary = entry.get("summary", "")
                 text_to_check = (title + " " + summary).lower()
                 
-                # Фильтр по ключевым словам ИИ
                 if any(kw in text_to_check for kw in KEYWORDS):
                     items.append(f"• {title}\n  {link}")
         except Exception:
             continue
     
-    return "\n\n".join(items[:20]) # Ограничиваем 20 новостями, чтобы не превысить лимит токенов
+    if not items:
+        return "Явных новостей по ИИ в ИБ за 24 часа не найдено. Сформируй краткий обзор ключевых трендов 2026 года (агентные угрозы, отравление данных, гомоморфное шифрование)."
+    
+    return "\n\n".join(items[:20])
 
 def generate_digest(news_text):
-    prompt = f"""Ты — эксперт по информационной безопасности. Сделай ежедневный дайджест по ИБ в сфере ИИ на основе этих новостей.
+    prompt = f"""Ты — эксперт по информационной безопасности. Сделай ежедневный дайджест по ИБ в сфере ИИ.
 Формат строго:
-1. Раздел "🚨 Угрозы и риски" (3–4 пункта, кратко, с указанием источника/контекста).
-2. Раздел "💡 Прорывные решения и факты" (3–4 пункта).
-3. Раздел "🔗 Источники" (2–3 ссылки из текста).
-Тон: для специалиста по ИБ, без воды, максимум 400 слов. Если новостей мало, сделай выводы на основе общих трендов 2026 года.
+1. 🚨 Угрозы и риски (3–4 пункта, кратко, с контекстом).
+2. 💡 Прорывные решения и факты (3–4 пункта).
+3. 🔗 Источники (2–3 ссылки из текста, если они есть).
+Тон: для специалиста по ИБ, без воды, максимум 400 слов. Используй Markdown.
 
 Новости для анализа:
 {news_text}"""
 
-    headers = {
-        "Authorization": f"Bearer {LLM_KEY}",
-        "HTTP-Referer": "https://github.com", # Требуется OpenRouter
-        "X-Title": "AI Security Digest"
-    }
+    headers = {"Content-Type": "application/json"}
+    
+    # Формат запроса для Gemini
     payload = {
-        "model": LLM_MODEL,
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.3
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.3}
     }
     
-    response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
+    response = requests.post(LLM_URL, headers=headers, json=payload)
+    
+    if response.status_code != 200:
+        print(f"❌ Ошибка API: {response.status_code}")
+        print(f"Ответ сервера: {response.text}")
+        
     response.raise_for_status()
-    return response.json()["choices"][0]["message"]["content"]
+    
+    # Парсинг ответа Gemini отличается от OpenAI
+    return response.json()["candidates"][0]["content"]["parts"][0]["text"]
 
 def send_to_telegram(text):
     url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
@@ -80,8 +85,6 @@ def send_to_telegram(text):
 if __name__ == "__main__":
     print("Сбор новостей...")
     news = get_news()
-    if not news:
-        news = "За последние 24 часа явных новостей по ИИ в ИБ не найдено. Сформируй дайджест на основе ключевых трендов 2026 года (агентные угрозы, отравление данных, гомоморфное шифрование)."
     
     print("Генерация дайджеста...")
     digest = generate_digest(news)
