@@ -3,15 +3,12 @@ import feedparser
 import datetime
 import requests
 
-# --- НАСТРОЙКИ ---
+# --- НАСТРОЙКИ TELEGRAM ---
 TG_TOKEN = os.environ.get("TG_TOKEN")
 TG_CHAT_ID = os.environ.get("TG_CHAT_ID")
-LLM_KEY = os.environ.get("LLM_API_KEY")
 
-# НАСТРОЙКИ HUGGING FACE (100% бесплатно, без блокировок)
-# Модель Mistral Nemo отлично понимает русский и быстро генерирует текст
-LLM_MODEL = "mistralai/Mistral-Nemo-Instruct-2407"
-LLM_URL = f"https://api-inference.huggingface.co/models/{LLM_MODEL}"
+# --- НАСТРОЙКИ AI (Pollinations.ai - бесплатно, без ключей) ---
+LLM_URL = "https://text.pollinations.ai/openai"
 
 FEEDS = [
     "https://habr.com/ru/flows/security/rss/",
@@ -45,44 +42,33 @@ def get_news():
     return "\n\n".join(items[:20])
 
 def generate_digest(news_text):
-    prompt = f"""<s>[INST] Ты — эксперт по информационной безопасности. Сделай ежедневный дайджест по ИБ в сфере ИИ.
+    prompt = f"""Ты — эксперт по информационной безопасности. Сделай ежедневный дайджест по ИБ в сфере ИИ.
 Формат строго:
 1. 🚨 Угрозы и риски (3–4 пункта, кратко, с контекстом).
 2. 💡 Прорывные решения и факты (3–4 пункта).
-3. 🔗 Источники (2–3 ссылки из текста, если они есть).
+3. 🔗 Источники (2–3 ссылки из текста).
 Тон: для специалиста по ИБ, без воды, максимум 400 слов. Используй Markdown.
 
 Новости для анализа:
-{news_text} [/INST]"""
+{news_text}"""
 
-    headers = {
-        "Authorization": f"Bearer {LLM_KEY}",
-        "Content-Type": "application/json"
-    }
+    headers = {"Content-Type": "application/json"}
     
     payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 800,
-            "temperature": 0.3,
-            "return_full_text": False # Вернет только ответ модели, без повторения промпта
-        }
+        "model": "openai", # Использует стабильный роутер Pollinations
+        "messages": [{"role": "user", "content": prompt}],
+        "private": True # Не кэшировать промпт публично
     }
     
-    response = requests.post(LLM_URL, headers=headers, json=payload)
+    # Увеличиваем таймаут, так как бесплатные модели могут отвечать до 30 секунд
+    response = requests.post(LLM_URL, headers=headers, json=payload, timeout=60)
     
     if response.status_code != 200:
         print(f"❌ Ошибка API: {response.status_code}")
         print(f"Ответ сервера: {response.text}")
-        
-    response.raise_for_status()
+        response.raise_for_status()
     
-    # Парсинг ответа Hugging Face
-    result = response.json()
-    if isinstance(result, list) and len(result) > 0:
-        return result[0]["generated_text"].strip()
-    else:
-        return "Ошибка формата ответа от модели."
+    return response.json()["choices"][0]["message"]["content"]
 
 def send_to_telegram(text):
     url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
