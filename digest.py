@@ -53,20 +53,31 @@ def generate_digest(news_text):
 {news_text}"""
 
     headers = {"Content-Type": "application/json"}
-    
     payload = {
-        "model": "openai", # Использует стабильный роутер Pollinations
         "messages": [{"role": "user", "content": prompt}],
-        "private": True # Не кэшировать промпт публично
+        "model": "llama", # Нативная модель, без OpenAI-обертки и её лимитов
+        "private": True
     }
     
-    # Увеличиваем таймаут, так как бесплатные модели могут отвечать до 30 секунд
-    response = requests.post(LLM_URL, headers=headers, json=payload, timeout=60)
+    # ВАЖНО: обращаемся к корневому адресу, а не к /openai
+    response = requests.post("https://text.pollinations.ai/", headers=headers, json=payload, timeout=60)
     
     if response.status_code != 200:
         print(f"❌ Ошибка API: {response.status_code}")
         print(f"Ответ сервера: {response.text}")
         response.raise_for_status()
+    
+    # Pollinations может вернуть JSON или чистый текст, обрабатываем оба варианта
+    try:
+        data = response.json()
+        if "response" in data:
+            return data["response"]
+        elif "choices" in data:
+            return data["choices"][0]["message"]["content"]
+        else:
+            return str(data)
+    except:
+        return response.text
     
     return response.json()["choices"][0]["message"]["content"]
 
