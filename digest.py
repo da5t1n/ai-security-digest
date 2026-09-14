@@ -9,6 +9,7 @@ TG_CHAT_ID = os.environ.get("TG_CHAT_ID")
 LLM_KEY = os.environ.get("LLM_API_KEY")
 
 # НАСТРОЙКИ HUGGING FACE (100% бесплатно, без блокировок)
+# Модель Mistral Nemo отлично понимает русский и быстро генерирует текст
 LLM_MODEL = "mistralai/Mistral-Nemo-Instruct-2407"
 LLM_URL = f"https://api-inference.huggingface.co/models/{LLM_MODEL}"
 
@@ -64,7 +65,7 @@ def generate_digest(news_text):
         "parameters": {
             "max_new_tokens": 800,
             "temperature": 0.3,
-            "return_full_text": False
+            "return_full_text": False # Вернет только ответ модели, без повторения промпта
         }
     }
     
@@ -76,6 +77,7 @@ def generate_digest(news_text):
         
     response.raise_for_status()
     
+    # Парсинг ответа Hugging Face
     result = response.json()
     if isinstance(result, list) and len(result) > 0:
         return result[0]["generated_text"].strip()
