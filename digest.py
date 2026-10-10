@@ -41,43 +41,81 @@ def get_news():
     
     return "\n\n".join(items[:20])
 
-def generate_digest(news_text):
-    prompt = f"""Ты — эксперт по информационной безопасности. Сделай ежедневный дайджест по ИБ в сфере ИИ.
-Формат строго:
-1. 🚨 Угрозы и риски (3–4 пункта, кратко, с контекстом).
-2. 💡 Прорывные решения и факты (3–4 пункта).
-3. 🔗 Источники (2–3 ссылки из текста).
-Тон: для специалиста по ИБ, без воды, максимум 400 слов. Используй Markdown.
+import requests
+import json
+import os
 
-Новости для анализа:
-{news_text}"""
+def generate_digest_yandexgpt(news_text: str) -> str:
+    """
+    Генерирует дайджест новостей с помощью YandexGPT.
+    """
+    # ВАЖНО: Никогда не храните ключи в коде! Используйте переменные окружения.
+    # В GitHub Actions их нужно добавить в Settings -> Secrets and variables -> Actions
+    folder_id = os.getenv("YANDEX_FOLDER_ID", "ваш_folder_id")
+    api_key = os.getenv("YANDEX_API_KEY", "ваш_api_key") 
+    # Или используйте IAM_TOKEN вместо API_KEY: os.getenv("YANDEX_IAM_TOKEN")
 
-    headers = {"Content-Type": "application/json"}
-    payload = {
-        "messages": [{"role": "user", "content": prompt}],
-        "model": "llama", # Нативная модель, без OpenAI-обертки и её лимитов
-        "private": True
+    if folder_id == "ваш_folder_id" or api_key == "ваш_api_key":
+        raise ValueError("Не заданы YANDEX_FOLDER_ID или YANDEX_API_KEY в переменных окружения")
+
+    url = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
+    
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Api-Key {api_key}", # Если используете IAM-токен, замените на f"Bearer {iam_token}"
+        "x-folder-id": folder_id
     }
+
+    prompt = f"""Ты эксперт в области информационной безопасности. 
+    Проанализируй следующие новости и составь краткий, структурированный дайджест на русском языке. 
+    Выдели главные угрозы, уязвимости или события. Используй маркированные списки.
     
-    # ВАЖНО: обращаемся к корневому адресу, а не к /openai
-    response = requests.post("https://text.pollinations.ai/", headers=headers, json=payload, timeout=60)
-    
-    if response.status_code != 200:
-        print(f"❌ Ошибка API: {response.status_code}")
-        print(f"Ответ сервера: {response.text}")
-        response.raise_for_status()
-    
-    # Pollinations может вернуть JSON или чистый текст, обрабатываем оба варианта
+    Новости:
+    {news_text}
+    """
+
+    payload = {
+        "modelUri": f"gpt://{folder_id}/yandexgpt/latest",
+        "completionOptions": {
+            "stream": False,
+            "temperature": 0.5,
+            "maxTokens": "1500"
+        },
+        "messages": [
+            {
+                "role": "system",
+                "text": "Ты полезный ассистент, эксперт по кибербезопасности. Отвечай четко и по делу."
+            },
+            {
+                "role": "user",
+                "text": prompt
+            }
+        ]
+    }
+
     try:
-        data = response.json()
-        if "response" in data:
-            return data["response"]
-        elif "choices" in data:
-            return data["choices"][0]["message"]["content"]
-        else:
-            return str(data)
-    except:
-        return response.text
+        print("Генерация дайджеста через YandexGPT...")
+        response = requests.post(url, headers=headers, json=payload)
+        
+        # Проверяем статус ответа (вызовет ошибку, если не 2xx)
+        response.raise_for_status()
+        
+        result = response.json()
+        
+        # Извлекаем сгенерированный текст из ответа Yandex
+        digest_text = result["result"]["alternatives"][0]["message"]["text"]
+        return digest_text
+
+    except requests.exceptions.HTTPError as e:
+        print(f"❌ Ошибка API YandexGPT: {e}")
+        print(f"Ответ сервера: {response.text}")
+        raise
+    except Exception as e:
+        print(f"❌ Неожиданная ошибка при генерации дайджеста: {e}")
+        raise
+
+# Пример вызова (замените ваш старый вызов generate_digest(news) на этот):
+# digest = generate_digest_yandexgpt(news)
     
     return response.json()["choices"][0]["message"]["content"]
 
