@@ -52,11 +52,11 @@ def generate_digest (news_text: str) -> str:
     # ВАЖНО: Никогда не храните ключи в коде! Используйте переменные окружения.
     # В GitHub Actions их нужно добавить в Settings -> Secrets and variables -> Actions
     folder_id = os.getenv("YANDEX_FOLDER_ID", "ваш_folder_id")
-    api_key = os.getenv("YANDEX_API_KEY", "ваш_api_key") 
-    # Или используйте IAM_TOKEN вместо API_KEY: os.getenv("YANDEX_IAM_TOKEN")
+    api_key = os.getenv("LLM_API_KEY", "ваш_api_key") 
+    # Или используйте IAM_TOKEN вместо API_KEY: os.getenv("LLM_API_KEY")
 
     if folder_id == "ваш_folder_id" or api_key == "ваш_api_key":
-        raise ValueError("Не заданы YANDEX_FOLDER_ID или YANDEX_API_KEY в переменных окружения")
+        raise ValueError("Не заданы YANDEX_FOLDER_ID или LLM_API_KEY в переменных окружения")
 
     url = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
     
