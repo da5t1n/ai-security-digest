@@ -40,6 +40,21 @@ def get_news():
 
 def generate_digest(news_text: str) -> str:
     """Генерирует дайджест новостей с помощью YandexGPT."""
+
+import datetime
+
+def generate_digest(news_text: str) -> str:
+    # Получаем текущую дату
+    today = datetime.datetime.now().strftime("%d.%m.%Y")
+    
+    # ... остальной код ...
+    
+    # В промпте замени [дата] на {today}
+    prompt = f"""...
+СТРУКТУРА ДАЙДЖЕСТА:
+1. Начни с заголовка: **📰 Дайджест новостей ИБ за {today}**
+...
+"""
     
     # Получаем переменные окружения
     folder_id = os.getenv("YANDEX_FOLDER_ID")
