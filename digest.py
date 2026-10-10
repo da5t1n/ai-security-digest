@@ -45,7 +45,7 @@ import requests
 import json
 import os
 
-def generate_digest_yandexgpt(news_text: str) -> str:
+def generate_digest (news_text: str) -> str:
     """
     Генерирует дайджест новостей с помощью YandexGPT.
     """
