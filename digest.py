@@ -97,22 +97,32 @@ def generate_digest(news_text: str) -> str:
     return digest_text
 
 def send_to_telegram(text):
+    """Отправляет сообщение в Telegram с обработкой ошибок форматирования."""
     url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
-    response = requests.post(url, json={
+    
+    # Пробуем отправить с Markdown
+    payload = {
         "chat_id": TG_CHAT_ID,
         "text": text,
-        "parse_mode": "Markdown",
-        "disable_web_page_preview": True
-    })
-    response.raise_for_status()
-
-if __name__ == "__main__":
-    print("Сбор новостей...")
-    news = get_news()
+        "parse_mode": "Markdown",  # Обычный Markdown (более совместимый)
+        "disable_web_page_preview": False  # Разрешаем превью ссылок
+    }
     
-    print("Генерация дайджеста...")
-    digest = generate_digest(news)
-    
-    print("Отправка в Telegram...")
-    send_to_telegram(digest)
-    print("Готово! ✅")
+    try:
+        response = requests.post(url, json=payload)
+        response.raise_for_status()
+        print("✅ Сообщение отправлено с Markdown-форматированием")
+        
+    except requests.exceptions.HTTPError as e:
+        # Если Markdown сломался (например, неправильная разметка), отправляем как обычный текст
+        print(f"⚠️ Ошибка Markdown, отправляю как обычный текст: {e}")
+        
+        payload_fallback = {
+            "chat_id": TG_CHAT_ID,
+            "text": text,
+            "disable_web_page_preview": False
+        }
+        response = requests.post(url, json=payload_fallback)
+        response.raise_for_status()
+        print("✅ Сообщение отправлено без форматирования")   
+   
