@@ -2,20 +2,22 @@ import os
 import feedparser
 import datetime
 import requests
-import time  # Добавлено для задержки при повторных попытках
+import time
 
 # --- НАСТРОЙКИ TELEGRAM ---
 TG_TOKEN = os.environ.get("TG_TOKEN")
 TG_CHAT_ID = os.environ.get("TG_CHAT_ID")
 
+# --- ТОЛЬКО РУССКОЯЗЫЧНЫЕ ИСТОЧНИКИ ---
 FEEDS = [
-    "https://habr.com/ru/flows/security/rss/",
-    "https://www.tadviser.ru/rss/",
-    "https://www.anti-malware.ru/rss",
-    "https://tg.i-c-a.su/rss/kiber_boloid",
-    "https://thehackernews.com/feeds/posts/default",
+    "https://habr.com/ru/flows/security/rss/",          # Хабр (Информационная безопасность)
+    "https://www.tadviser.ru/rss/",                     # TAdviser (ИТ и госсектор)
+    "https://www.anti-malware.ru/rss",                  # Anti-Malware.ru (Вирусы и уязвимости)
+    "https://tg.i-c-a.su/rss/kiber_boloid",             # КиберБолоид (Telegram-канал)
+    "https://www.securitylab.ru/news/rss.php",          # SecurityLab (Новости ИБ)
 ]
 
+# Ключевые слова для фильтрации (оставляем как есть, они отлично работают)
 KEYWORDS = ["иИ", "ai ", "llm", "нейросет", "machine learning", "prompt", "агентн", "gpt", "llama", "кибербезопасность"]
 
 def get_news():
@@ -85,7 +87,7 @@ def generate_digest(news_text: str) -> str:
         "completionOptions": {
             "stream": False,
             "temperature": 0.6,
-            "maxTokens": "1000"  # <-- УМЕНЬШЕНО для ускорения генерации
+            "maxTokens": "1000"
         },
         "messages": [
             {
@@ -99,13 +101,11 @@ def generate_digest(news_text: str) -> str:
         ]
     }
 
-    # <-- ДОБАВЛЕНА ЛОГИКА ПОВТОРНЫХ ПОПЫТОК -->
     max_retries = 3
     for attempt in range(max_retries):
         try:
             print(f"🧠 Отправка запроса к YandexGPT (попытка {attempt + 1}/{max_retries})...", flush=True)
             
-            # <-- ТАЙМАУТ УВЕЛИЧЕН ДО 120 СЕКУНД -->
             response = requests.post(url, headers=headers, json=payload, timeout=120)
             response.raise_for_status()
             
@@ -120,7 +120,7 @@ def generate_digest(news_text: str) -> str:
             time.sleep(5)
         except Exception as e:
             print(f"❌ Ошибка API (не таймаут): {e}", flush=True)
-            raise  # Если ошибка не в таймауте, прерываем сразу
+            raise
             
     raise Exception("Не удалось получить ответ от YandexGPT после нескольких попыток.")
 
