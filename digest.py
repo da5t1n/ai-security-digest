@@ -3,6 +3,10 @@ import feedparser
 import datetime
 import requests
 
+# Принудительный вывод для отладки
+print("🚀 СКРИПТ ЗАПУЩЕН УСПЕШНО!", flush=True)
+print(f"🚀 TG_CHAT_ID из окружения: {os.getenv('TG_CHAT_ID')}", flush=True)
+
 # --- НАСТРОЙКИ TELEGRAM ---
 TG_TOKEN = os.environ.get("TG_TOKEN")
 TG_CHAT_ID = os.environ.get("TG_CHAT_ID")
