@@ -2,8 +2,8 @@ name: Daily AI Security Digest
 
 on:
   schedule:
-    # Запуск каждый день в 05:00 по МСК (02:00 UTC)
-    - cron: '0 2 * * *'
+    # Запуск каждый день в 22:00 по МСК (19:00 UTC)
+    - cron: '0 19 * * *'
   workflow_dispatch:
 
 jobs:
