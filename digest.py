@@ -2,6 +2,7 @@ import os
 import feedparser
 import datetime
 import requests
+import time  # Добавлено для задержки при повторных попытках
 
 # --- НАСТРОЙКИ TELEGRAM ---
 TG_TOKEN = os.environ.get("TG_TOKEN")
@@ -84,7 +85,7 @@ def generate_digest(news_text: str) -> str:
         "completionOptions": {
             "stream": False,
             "temperature": 0.6,
-            "maxTokens": "2000"
+            "maxTokens": "1000"  # <-- УМЕНЬШЕНО для ускорения генерации
         },
         "messages": [
             {
@@ -98,15 +99,30 @@ def generate_digest(news_text: str) -> str:
         ]
     }
 
-    print("🧠 Отправка запроса к YandexGPT...", flush=True)
-    response = requests.post(url, headers=headers, json=payload, timeout=60)
-    response.raise_for_status()
-    
-    result = response.json()
-    digest_text = result["result"]["alternatives"][0]["message"]["text"]
-    
-    print(f"✅ Дайджест сгенерирован. Длина: {len(digest_text)} символов", flush=True)
-    return digest_text
+    # <-- ДОБАВЛЕНА ЛОГИКА ПОВТОРНЫХ ПОПЫТОК -->
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            print(f"🧠 Отправка запроса к YandexGPT (попытка {attempt + 1}/{max_retries})...", flush=True)
+            
+            # <-- ТАЙМАУТ УВЕЛИЧЕН ДО 120 СЕКУНД -->
+            response = requests.post(url, headers=headers, json=payload, timeout=120)
+            response.raise_for_status()
+            
+            result = response.json()
+            digest_text = result["result"]["alternatives"][0]["message"]["text"]
+            
+            print(f"✅ Дайджест сгенерирован. Длина: {len(digest_text)} символов", flush=True)
+            return digest_text
+            
+        except requests.exceptions.ReadTimeout:
+            print(f"⏳ Превышено время ожидания. Повторная попытка через 5 секунд...", flush=True)
+            time.sleep(5)
+        except Exception as e:
+            print(f"❌ Ошибка API (не таймаут): {e}", flush=True)
+            raise  # Если ошибка не в таймауте, прерываем сразу
+            
+    raise Exception("Не удалось получить ответ от YandexGPT после нескольких попыток.")
 
 def send_to_telegram(text):
     """Отправляет сообщение в Telegram."""
@@ -123,7 +139,6 @@ def send_to_telegram(text):
     }
     
     response = requests.post(url, json=payload, timeout=30)
-    
     print(f"📥 Ответ Telegram: {response.status_code}", flush=True)
     
     if response.status_code == 200:
