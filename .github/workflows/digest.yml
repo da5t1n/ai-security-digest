@@ -30,4 +30,4 @@ jobs:
         run: pip install -r requirements.txt
         
       - name: Run digest script
-        run: python digest.py
+        run: python -u digest.py
