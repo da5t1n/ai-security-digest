@@ -78,8 +78,24 @@ def generate_digest(news_text: str) -> str:
 {news_text}
 """
 
-    payload = {
-        "modelUri": f"gpt://{import os
+        payload = {
+        "modelUri": f"gpt://{folder_id}/yandexgpt/latest",
+        "completionOptions": {
+            "stream": False,
+            "temperature": 0.6,
+            "maxTokens": "2000"
+        },
+        "messages": [
+            {
+                "role": "system",
+                "text": "Ты эксперт по кибербезопасности. Форматируй ответы с Markdown."
+            },
+            {
+                "role": "user",
+                "text": prompt
+            }
+        ]
+    }
 import feedparser
 import datetime
 import requests
@@ -246,17 +262,17 @@ def generate_digest(news_text: str) -> str:
     {news_text}
     """
 
-    payload = {
+        payload = {
         "modelUri": f"gpt://{folder_id}/yandexgpt/latest",
         "completionOptions": {
             "stream": False,
-            "temperature": 0.5,
-            "maxTokens": "1500"
+            "temperature": 0.6,
+            "maxTokens": "2000"
         },
         "messages": [
             {
                 "role": "system",
-                "text": "Ты полезный ассистент, эксперт по кибербезопасности. Отвечай четко и по делу."
+                "text": "Ты эксперт по кибербезопасности. Форматируй ответы с Markdown."
             },
             {
                 "role": "user",
