@@ -3,6 +3,87 @@ import feedparser
 import datetime
 import requests
 
+# --- НАСТРОЙКИ TELEGRAM ---
+TG_TOKEN = os.environ.get("TG_TOKEN")
+TG_CHAT_ID = os.environ.get("TG_CHAT_ID")
+
+FEEDS = [
+    "https://habr.com/ru/flows/security/rss/",
+    "https://www.tadviser.ru/rss/",
+    "https://www.anti-malware.ru/rss",
+    "https://thehackernews.com/feeds/posts/default",
+]
+
+KEYWORDS = ["иИ", "ai ", "llm", "нейросет", "machine learning", "prompt", "агентн", "gpt", "llama", "кибербезопасность"]
+
+def get_news():
+    yesterday = (datetime.datetime.now() - datetime.timedelta(days=1)).date()
+    items = []
+    for url in FEEDS:
+        print(f"   📡 Парсим {url}...", flush=True)
+        try:
+            feed = feedparser.parse(url, request_headers={'User-Agent': 'Mozilla/5.0'})
+            for entry in feed.entries[:15]:
+                title = entry.get("title", "")
+                link = entry.get("link", "")
+                summary = entry.get("summary", "")
+                text_to_check = (title + " " + summary).lower()
+                
+                if any(kw in text_to_check for kw in KEYWORDS):
+                    items.append(f"• {title}\n  {link}")
+        except Exception as e:
+            print(f"   ⚠️ Ошибка парсинга {url}: {e}", flush=True)
+            continue
+    
+    if not items:
+        return "Явных новостей по ИИ в ИБ за 24 часа не найдено. Сформируй краткий обзор ключевых трендов 2026 года (агентные угрозы, отравление данных, гомоморфное шифрование)."
+    
+    return "\n\n".join(items[:20])
+
+def generate_digest(news_text: str) -> str:
+    """Генерирует дайджест новостей с помощью YandexGPT."""
+    
+    folder_id = os.getenv("YANDEX_FOLDER_ID")
+    api_key = os.getenv("LLM_API_KEY")
+    
+    if not folder_id or not api_key:
+        raise ValueError("❌ ОШИБКА: Не заданы секреты YANDEX_FOLDER_ID или LLM_API_KEY в настройках GitHub Actions!")
+
+    url = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
+    
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Api-Key {api_key}",
+        "x-folder-id": folder_id
+    }
+
+    today = datetime.datetime.now().strftime("%d.%m.%Y")
+    
+    prompt = f"""Ты эксперт в области информационной безопасности. 
+Проанализируй следующие новости и составь структурированный дайджест на русском языке.
+
+ВАЖНО: Используй простую Markdown-разметку:
+- Заголовки категорий выделяй **жирным** (например: **🚨 Критические уязвимости**)
+- Названия уязвимостей, CVE выделяй `моноширинным шрифтом` (например: `CVE-2024-1234`)
+- Используй эмодзи для категорий: 🚨 🛡️ 🤖 📊 🌐
+- НЕ используй сложные конструкции Markdown
+
+СТРУКТУРА:
+1. Заголовок: **📰 Дайджест новостей ИБ за {today}**
+2. Раздели на 3-4 категории с эмодзи
+3. В каждой категории 2-3 новости (кратко + ссылка)
+4. В конце: **💡 Главный вывод дня** (1 предложение)
+
+НОВОСТИ:
+{news_text}
+"""
+
+    payload = {
+        "modelUri": f"gpt://{import os
+import feedparser
+import datetime
+import requests
+
 # Принудительный вывод для отлаimport os
 import feedparser
 import datetime
