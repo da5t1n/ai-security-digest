@@ -10,14 +10,13 @@ TG_CHAT_ID = os.environ.get("TG_CHAT_ID")
 
 # --- ТОЛЬКО РУССКОЯЗЫЧНЫЕ ИСТОЧНИКИ ---
 FEEDS = [
-    "https://habr.com/ru/flows/security/rss/",          # Хабр (Информационная безопасность)
-    "https://www.tadviser.ru/rss/",                     # TAdviser (ИТ и госсектор)
-    "https://www.anti-malware.ru/rss",                  # Anti-Malware.ru (Вирусы и уязвимости)
-    "https://tg.i-c-a.su/rss/kiber_boloid",             # КиберБолоид (Telegram-канал)
-    "https://www.securitylab.ru/news/rss.php",          # SecurityLab (Новости ИБ)
+    "https://habr.com/ru/flows/security/rss/",
+    "https://www.tadviser.ru/rss/",
+    "https://www.anti-malware.ru/rss",
+    "https://tg.i-c-a.su/rss/kiber_boloid",
+    "https://www.securitylab.ru/news/rss.php",
 ]
 
-# Ключевые слова для фильтрации (оставляем как есть, они отлично работают)
 KEYWORDS = ["иИ", "ai ", "llm", "нейросет", "machine learning", "prompt", "агентн", "gpt", "llama", "кибербезопасность"]
 
 def get_news():
@@ -34,7 +33,8 @@ def get_news():
                 text_to_check = (title + " " + summary).lower()
                 
                 if any(kw in text_to_check for kw in KEYWORDS):
-                    items.append(f"• {title}\n  {link}")
+                    # Форматируем так, чтобы нейросеть НЕ могла потерять ссылку
+                    items.append(f"ЗАГОЛОВОК: {title}\nССЫЛКА: {link}")
         except Exception as e:
             print(f"   ⚠️ Ошибка парсинга {url}: {e}", flush=True)
             continue
@@ -42,7 +42,7 @@ def get_news():
     if not items:
         return "Явных новостей по ИИ в ИБ за 24 часа не найдено. Сформируй краткий обзор ключевых трендов 2026 года (агентные угрозы, отравление данных, гомоморфное шифрование)."
     
-    return "\n\n".join(items[:20])
+    return "\n\n---\n\n".join(items[:20])
 
 def generate_digest(news_text: str) -> str:
     """Генерирует дайджест новостей с помощью YandexGPT."""
@@ -63,22 +63,25 @@ def generate_digest(news_text: str) -> str:
 
     today = datetime.datetime.now().strftime("%d.%m.%Y")
     
+    # УСИЛЕННЫЙ ПРОМПТ С ЖЕСТКИМ ТРЕБОВАНИЕМ СОХРАНЯТЬ ССЫЛКИ
     prompt = f"""Ты эксперт в области информационной безопасности. 
 Проанализируй следующие новости и составь структурированный дайджест на русском языке.
 
-ВАЖНО: Используй простую Markdown-разметку:
-- Заголовки категорий выделяй **жирным** (например: **🚨 Критические уязвимости**)
-- Названия уязвимостей, CVE выделяй `моноширинным шрифтом` (например: `CVE-2024-1234`)
-- Используй эмодзи для категорий: 🚨 🛡️ 🤖 📊 🌐
-- НЕ используй сложные конструкции Markdown
+КРИТИЧЕСКИ ВАЖНО: Ты обязан сохранить гиперссылки на первоисточники для каждой новости!
+Используй формат гиперссылок Telegram Markdown: [Текст ссылки](URL)
 
-СТРУКТУРА:
+СТРУКТУРА ДАЙДЖЕСТА:
 1. Заголовок: **📰 Дайджест новостей ИБ за {today}**
-2. Раздели на 3-4 категории с эмодзи
-3. В каждой категории 2-3 новости (кратко + ссылка)
-4. В конце: **💡 Главный вывод дня** (1 предложение)
+2. Раздели новости на 3-4 тематические категории с эмодзи (🚨 🛡️ 🤖 📊 🌐).
+3. В каждой категории опиши 2-4 новости. 
+   Формат каждой новости должен быть СТРОГО таким:
+   📌 **Краткая суть новости (1-2 предложения)**
+   🔗 [Читать первоисточник](точная_ссылка_из_входных_данных)
+4. В конце добавь раздел: **💡 Главный вывод дня** (1 предложение).
 
-НОВОСТИ:
+НЕ ВЫДУМЫВАЙ ссылки. Используй только те URL, которые предоставлены во входных данных.
+
+ВХОДНЫЕ ДАННЫЕ (НОВОСТИ):
 {news_text}
 """
 
@@ -86,13 +89,13 @@ def generate_digest(news_text: str) -> str:
         "modelUri": f"gpt://{folder_id}/yandexgpt/latest",
         "completionOptions": {
             "stream": False,
-            "temperature": 0.6,
-            "maxTokens": "1000"
+            "temperature": 0.5, # Чуть ниже температура для большей точности следования инструкциям
+            "maxTokens": "1500" # Чуть увеличили лимит, чтобы хватило места на ссылки
         },
         "messages": [
             {
                 "role": "system",
-                "text": "Ты эксперт по кибербезопасности. Форматируй ответы с Markdown."
+                "text": "Ты эксперт по кибербезопасности. Строго следуй инструкциям по форматированию, особенно в части сохранения URL-адресов."
             },
             {
                 "role": "user",
@@ -135,7 +138,7 @@ def send_to_telegram(text):
         "chat_id": TG_CHAT_ID,
         "text": text,
         "parse_mode": "Markdown",
-        "disable_web_page_preview": False
+        "disable_web_page_preview": True # True, чтобы не спамить превью картинок для каждой ссылки
     }
     
     response = requests.post(url, json=payload, timeout=30)
@@ -151,7 +154,7 @@ def send_to_telegram(text):
     payload_simple = {
         "chat_id": TG_CHAT_ID,
         "text": text,
-        "disable_web_page_preview": False
+        "disable_web_page_preview": True
     }
     
     response = requests.post(url, json=payload_simple, timeout=30)
