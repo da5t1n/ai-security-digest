@@ -11,6 +11,7 @@ FEEDS = [
     "https://habr.com/ru/flows/security/rss/",
     "https://www.tadviser.ru/rss/",
     "https://www.anti-malware.ru/rss",
+    "https://tg.i-c-a.su/rss/kiber_boloid",
     "https://thehackernews.com/feeds/posts/default",
 ]
 
